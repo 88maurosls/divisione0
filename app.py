@@ -59,11 +59,11 @@ def transpose_value_next_to_header1(file_path, expected_fields):
 def upload_to_google_sheets(df, sheet_name):
     try:
         creds_info = {
-            "type": st.secrets["gcp_service_account"]["type"],
-            "project_id": st.secrets["gcp_service_account"]["project_id"],
-            "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
-            "private_key": st.secrets["gcp_service_account"]["private_key"],
-            "client_email": st.secrets["gcp_service_account"]["client_email"],
+            "type": st.secrets["service_account"]["type"],
+            "project_id": st.secrets["service_account"]["project_id"],
+            "private_key_id": st.secrets["service_account"]["private_key_id"],
+            "private_key": st.secrets["service_account"]["private_key"],
+            "client_email": st.secrets["service_account"]["client_email"],
             "client_id": st.secrets.get("client_id"),  # Solo se necessario
             "auth_uri": st.secrets.get("auth_uri"),    # Solo se necessario
             "token_uri": st.secrets.get("token_uri"),  # Solo se necessario
