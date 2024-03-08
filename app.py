@@ -59,16 +59,16 @@ def transpose_value_next_to_header1(file_path, expected_fields):
 def upload_to_google_sheets(df, sheet_name):
     try:
         creds_info = {
-            "type": st.secrets["service_account"]["type"],
-            "project_id": st.secrets["service_account"]["project_id"],
-            "private_key_id": st.secrets["service_account"]["private_key_id"],
-            "private_key": st.secrets["service_account"]["private_key"],
-            "client_email": st.secrets["service_account"]["client_email"],
-            "client_id": st.secrets.get("client_id"),  # Solo se necessario
-            "auth_uri": st.secrets.get("auth_uri"),    # Solo se necessario
-            "token_uri": st.secrets.get("token_uri"),  # Solo se necessario
-            "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),  # Solo se necessario
-            "client_x509_cert_url": st.secrets.get("client_x509_cert_url")  # Solo se necessario
+            "type": "service_account",
+            "project_id": st.secrets["project_id"],
+            "private_key_id": st.secrets["private_key_id"],
+            "private_key": st.secrets["private_key"],
+            "client_email": st.secrets["client_email"],
+            "client_id": st.secrets.get("client_id"),
+            "auth_uri": st.secrets.get("auth_uri"),
+            "token_uri": st.secrets.get("token_uri"),
+            "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),
+            "client_x509_cert_url": st.secrets.get("client_x509_cert_url")
         }
         creds = service_account.Credentials.from_service_account_info(creds_info)
 
@@ -76,7 +76,7 @@ def upload_to_google_sheets(df, sheet_name):
         gc = gspread.authorize(creds)
 
         # Apertura del foglio di lavoro Google Sheets
-        sheet = gc.open(sheet_name).sheet1
+        sheet = client.open(sheet_name).sheet1
         sheet.clear()
 
         # Trasforma il DataFrame in una lista di liste per l'aggiornamento di Google Sheets
