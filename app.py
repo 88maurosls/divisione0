@@ -1,18 +1,49 @@
 import pandas as pd
-import os
 import re
 import uuid
 from openpyxl import load_workbook
 from openpyxl.styles import Font
 from datetime import datetime
 import streamlit as st
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
 
-# Definisci il percorso della cartella di upload
-UPLOAD_FOLDER = "uploads"
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-def correct_csv(file_path, expected_fields):
-    with open(file_path, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
+def gsheet_api_check():
+    creds = None
+    if st.session_state.get('token_json'):
+        creds = Credentials.from_authorized_user_info(st.session_state.token_json, SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        st.session_state['token_json'] = creds.to_json()
+    return creds
+
+def upload_to_gsheet(df_data, spreadsheet_id, range_name):
+    creds = gsheet_api_check()
+    service = build('sheets', 'v4', credentials=creds)
+
+    # Converti il DataFrame in una lista di liste escludendo l'intestazione
+    values = df_data.values.tolist()
+
+    # Chiamata all'API per aggiungere i nuovi dati al foglio di calcolo usando il metodo append
+    body = {
+        'values': values
+    }
+    result = service.spreadsheets().values().append(
+        spreadsheetId=spreadsheet_id, range=range_name,
+        valueInputOption='USER_ENTERED', insertDataOption='INSERT_ROWS', body=body).execute()
+    st.write(f"{result.get('updates', {}).get('updatedCells')} celle aggiornate.")
+
+def correct_csv(file_data, expected_fields):
+    lines = file_data.decode('utf-8').splitlines()
 
     corrected_lines = []
     for line in lines:
@@ -23,16 +54,14 @@ def correct_csv(file_path, expected_fields):
             corrected_fields = fields
         corrected_lines.append(','.join(corrected_fields) + '\n')
 
-    with open(file_path, 'w', encoding='utf-8') as file:
-        file.writelines(corrected_lines)
+    return ''.join(corrected_lines)
 
-def trasponi_valore_accanto_header1(file_path, expected_fields):
+def trasponi_valore_accanto_header1(file_data, expected_fields):
     try:
         # Assicurati che il file CSV sia nel formato corretto
-        correct_csv(file_path, expected_fields)
+        corrected_data = correct_csv(file_data, expected_fields)
 
-        with open(file_path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
+        lines = corrected_data.splitlines()
 
         values_next_to_header1 = []
         data_rows = []
@@ -56,81 +85,35 @@ def trasponi_valore_accanto_header1(file_path, expected_fields):
         df_data['Value_Next_to_HEADER1'] = values_next_to_header1
         df_data = df_data[['Value_Next_to_HEADER1', 'SKU'] + [col for col in df_data.columns if col not in ['SKU', 'Value_Next_to_HEADER1']]]
 
-        # Genera un nome di file unico per evitare sovrascritture
-        unique_filename = f"output_{uuid.uuid4()}.xlsx"
-        temp_output_file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
-
+        # Genera un DataFrame con l'intestazione corretta
         headers = ["Rif. Sped.", "SKU", "Collo", "Codice", "Colore", "Size", "UPC", "Made in", "Unità", "Confezione", "customer PO", "Riferimento Spedizione"]
         df_data.columns = headers[:len(df_data.columns)]
 
-        df_data[['Collo', 'UPC']] = df_data[['Collo', 'UPC']].apply(lambda x: '{:.0f}'.format(x) if isinstance(x, (int, float)) else x)
-
-        df_data.to_excel(temp_output_file_path, index=False, float_format="%.0f")
-
-        # Applica lo stile alle celle dell'intestazione
-        wb = load_workbook(temp_output_file_path)
-        ws = wb.active
-        for col_num in range(1, len(headers) + 1):
-            cell = ws.cell(row=1, column=col_num)
-            cell.font = Font(bold=True)
-        wb.save(temp_output_file_path)
-
-        return temp_output_file_path
+        return df_data
 
     except Exception as e:
         st.error(f"Si è verificato un errore: {e}")
         return None
 
-def process_file(file_path, expected_fields=9):
-    st.write(f"\nInizio elaborazione del file {file_path}...")
-    output_file_path = trasponi_valore_accanto_header1(file_path, expected_fields)
-    if output_file_path:
-        st.success("Elaborazione completata.")
-        st.markdown(f"File salvato in: [{output_file_path}]({output_file_path})")
-        return output_file_path
-    else:
-        st.error("Errore nell'elaborazione del file.")
+def process_file(uploaded_file, expected_fields=9):
+    try:
+        # Elabora il file
+        df = trasponi_valore_accanto_header1(uploaded_file.getvalue(), expected_fields)
+        return df
+    except Exception as e:
+        st.error(f"Errore nell'elaborazione del file: {e}")
         return None
 
-def index():
-    st.title('Caricamento File')
-    uploaded_files = st.file_uploader("Carica i file CSV da elaborare", type='csv', accept_multiple_files=True)
+st.title('Caricamento File')
+uploaded_file = st.file_uploader("Carica un file CSV", type="csv")
+if uploaded_file is not None:
+    df = process_file(uploaded_file)
+    if df is not None:
+        st.success("Elaborazione completata.")
+        st.write(df)
 
-    if uploaded_files:
-        processed_files_info = []
-
-        for uploaded_file in uploaded_files:
-            if uploaded_file:
-                file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
-                st.write(file_details)
-                file_path = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
-
-                # Elabora ogni file
-                output_file_path = process_file(file_path)
-                if output_file_path:
-                    # Qui viene gestito il file processato
-
-                    # Aggiungi il file processato a processed_files_info
-                    base_name = os.path.splitext(uploaded_file.name)[0]
-                    if "-" in base_name:
-                        base_name = base_name.split("-")[1]
-                    base_name = base_name[:31]  # Limite del nome del foglio Excel
-                    processed_files_info.append((output_file_path, base_name))
-
-                else:
-                    st.error(f"Errore nell'elaborazione del file {uploaded_file.name}")
-
-        # Qui combini i file elaborati in un unico file Excel, se necessario
-        if processed_files_info:
-            combined_path = combine_excel_files(processed_files_info, UPLOAD_FOLDER)
-            if combined_path:
-                st.success("File combinato salvato correttamente.")
-                st.markdown(f"Scarica il file combinato da [qui]({combined_path})")
-            else:
-                st.error("Errore nella combinazione dei file")
-        else:
-            st.warning("Nessun file elaborato con successo")
-
-# Avvia l'app Streamlit
-if __name__ == "__main__":
-    index()
+        # Caricamento su Google Sheets
+        if st.button("Carica su Google Sheets"):
+            spreadsheet_id = 'YOUR_SPREADSHEET_ID'
+            range_name = 'Sheet1!A1'  # Sostituire con il proprio intervallo
+            upload_to_gsheet(df, spreadsheet_id, range_name)
