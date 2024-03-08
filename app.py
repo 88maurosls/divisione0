@@ -59,22 +59,22 @@ def trasponi_valore_accanto_header1(file_path, expected_fields):
 # Funzione per caricare i dati da un file CSV a Google Sheets
 def upload_to_google_sheets(df, sheet_name):
     try:
-        # Carica le credenziali da Streamlit Secrets
-        creds_dict = {
-    "type": st.secrets["type"],
-    "project_id": st.secrets["project_id"],
-    "private_key_id": st.secrets["private_key_id"],
-    "private_key": st.secrets["private_key"],
-    "client_email": st.secrets["client_email"],
-    "client_id": st.secrets["client_id"],
-    "auth_uri": st.secrets["auth_uri"],
-    "token_uri": st.secrets["token_uri"],
-    "auth_provider_x509_cert_url": st.secrets["auth_provider_x509_cert_url"],
-    "client_x509_cert_url": st.secrets["client_x509_cert_url"]
+        creds_info = {
+    "type": st.secrets["gcp_service_account"]["type"],
+    "project_id": st.secrets["gcp_service_account"]["project_id"],
+    "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
+    "private_key": st.secrets["gcp_service_account"]["private_key"],
+    "client_email": st.secrets["gcp_service_account"]["client_email"],
+    "client_id": st.secrets.get("client_id"),  # Solo se necessario
+    "auth_uri": st.secrets.get("auth_uri"),    # Solo se necessario
+    "token_uri": st.secrets.get("token_uri"),  # Solo se necessario
+    "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),  # Solo se necessario
+    "client_x509_cert_url": st.secrets.get("client_x509_cert_url")  # Solo se necessario
 }
+creds = service_account.Credentials.from_service_account_info(creds_info)
 
-        creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=['https://www.googleapis.com/auth/spreadsheets'])
-        client = gspread.authorize(creds)
+# Autorizza l'accesso a Google Sheets
+gc = gspread.authorize(creds)
 
         # Apertura del foglio di lavoro Google Sheets
         sheet = client.open(sheet_name).sheet1
