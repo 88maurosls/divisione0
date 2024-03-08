@@ -4,7 +4,6 @@ import gspread
 import re
 import os
 import tempfile
-import json
 from google.oauth2 import service_account
 
 # Funzione per correggere le righe del file CSV se contengono più campi del previsto
@@ -25,7 +24,7 @@ def correct_csv(file_path, expected_fields):
         file.writelines(corrected_lines)
 
 # Funzione per trasporre un valore specifico accanto a HEADER1 in tutte le righe
-def trasponi_valore_accanto_header1(file_path, expected_fields):
+def transpose_value_next_to_header1(file_path, expected_fields):
     try:
         correct_csv(file_path, expected_fields)
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -60,24 +59,24 @@ def trasponi_valore_accanto_header1(file_path, expected_fields):
 def upload_to_google_sheets(df, sheet_name):
     try:
         creds_info = {
-    "type": st.secrets["gcp_service_account"]["type"],
-    "project_id": st.secrets["gcp_service_account"]["project_id"],
-    "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
-    "private_key": st.secrets["gcp_service_account"]["private_key"],
-    "client_email": st.secrets["gcp_service_account"]["client_email"],
-    "client_id": st.secrets.get("client_id"),  # Solo se necessario
-    "auth_uri": st.secrets.get("auth_uri"),    # Solo se necessario
-    "token_uri": st.secrets.get("token_uri"),  # Solo se necessario
-    "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),  # Solo se necessario
-    "client_x509_cert_url": st.secrets.get("client_x509_cert_url")  # Solo se necessario
-}
-creds = service_account.Credentials.from_service_account_info(creds_info)
+            "type": st.secrets["gcp_service_account"]["type"],
+            "project_id": st.secrets["gcp_service_account"]["project_id"],
+            "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
+            "private_key": st.secrets["gcp_service_account"]["private_key"],
+            "client_email": st.secrets["gcp_service_account"]["client_email"],
+            "client_id": st.secrets.get("client_id"),  # Solo se necessario
+            "auth_uri": st.secrets.get("auth_uri"),    # Solo se necessario
+            "token_uri": st.secrets.get("token_uri"),  # Solo se necessario
+            "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),  # Solo se necessario
+            "client_x509_cert_url": st.secrets.get("client_x509_cert_url")  # Solo se necessario
+        }
+        creds = service_account.Credentials.from_service_account_info(creds_info)
 
-# Autorizza l'accesso a Google Sheets
-gc = gspread.authorize(creds)
+        # Autorizza l'accesso a Google Sheets
+        gc = gspread.authorize(creds)
 
         # Apertura del foglio di lavoro Google Sheets
-        sheet = client.open(sheet_name).sheet1
+        sheet = gc.open(sheet_name).sheet1
         sheet.clear()
 
         # Trasforma il DataFrame in una lista di liste per l'aggiornamento di Google Sheets
@@ -100,7 +99,7 @@ def main():
             f.write(file.getbuffer())
         
         # Processa il file CSV
-        processed_file_path = trasponi_valore_accanto_header1(file_path, 9)
+        processed_file_path = transpose_value_next_to_header1(file_path, 9)
 
         if processed_file_path:
             try:
