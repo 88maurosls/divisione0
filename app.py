@@ -1,119 +1,52 @@
-import pandas as pd
-import re
-import uuid
-from openpyxl import load_workbook
-from openpyxl.styles import Font
-from datetime import datetime
 import streamlit as st
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# Funzione per caricare i dati da CSV a Google Sheets
+def upload_to_google_sheets(file_path, sheet_name):
+    # Leggi il file CSV
+    df = pd.read_csv(file_path)
 
-def gsheet_api_check():
-    creds = None
-    if st.session_state.get('token_json'):
-        creds = Credentials.from_authorized_user_info(st.session_state.token_json, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-        st.session_state['token_json'] = creds.to_json()
-    return creds
-
-def upload_to_gsheet(df_data, spreadsheet_id, range_name):
-    creds = gsheet_api_check()
-    service = build('sheets', 'v4', credentials=creds)
-
-    # Converti il DataFrame in una lista di liste escludendo l'intestazione
-    values = df_data.values.tolist()
-
-    # Chiamata all'API per aggiungere i nuovi dati al foglio di calcolo usando il metodo append
-    body = {
-        'values': values
+    # Carica le credenziali di accesso all'API di Google Sheets
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = {
+        "installed": {
+            "client_id": "566018196019-ororo6jebbvpuq73vp4d6b8b8mn0fuqj.apps.googleusercontent.com",
+            "project_id": "streamlitdivisioni",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_secret": "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",
+            "redirect_uris": ["http://localhost"]
+        }
     }
-    result = service.spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id, range=range_name,
-        valueInputOption='USER_ENTERED', insertDataOption='INSERT_ROWS', body=body).execute()
-    st.write(f"{result.get('updates', {}).get('updatedCells')} celle aggiornate.")
+    client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(creds, scope))
 
-def correct_csv(file_data, expected_fields):
-    lines = file_data.decode('utf-8').splitlines()
+    # Apri il foglio di lavoro
+    sheet = client.open_by_url(sheet_name).sheet1
 
-    corrected_lines = []
-    for line in lines:
-        fields = line.strip().split(',')
-        if len(fields) > expected_fields:
-            corrected_fields = fields[:expected_fields]
-        else:
-            corrected_fields = fields
-        corrected_lines.append(','.join(corrected_fields) + '\n')
+    # Pulisci il foglio di lavoro
+    sheet.clear()
 
-    return ''.join(corrected_lines)
+    # Carica i dati nel foglio di lavoro
+    sheet.update([df.columns.values.tolist()] + df.values.tolist())
 
-def trasponi_valore_accanto_header1(file_data, expected_fields):
-    try:
-        # Assicurati che il file CSV sia nel formato corretto
-        corrected_data = correct_csv(file_data, expected_fields)
+# Funzione principale
+def main():
+    st.title('Caricamento CSV su Google Sheets')
 
-        lines = corrected_data.splitlines()
+    # Carica il file CSV
+    file = st.file_uploader("Carica un file CSV", type=['csv'])
 
-        values_next_to_header1 = []
-        data_rows = []
-        header_pattern = re.compile(r'^HEADER\d+')
-        value_next_to_header1 = ""
-
-        for line in lines:
-            fields = line.strip().split(',')
-            if fields[0] == "HEADER1":
-                value_next_to_header1 = fields[1] if len(fields) > 1 else ""
-            if not header_pattern.match(fields[0]):
-                data_rows.append(fields)
-                values_next_to_header1.append(value_next_to_header1)
-
-        df_data = pd.DataFrame(data_rows)
-
-        # Gestione della colonna SKU
-        if len(df_data.columns) >= 3:
-            df_data['SKU'] = df_data.iloc[:, 1] + '-' + df_data.iloc[:, 2]
-
-        df_data['Value_Next_to_HEADER1'] = values_next_to_header1
-        df_data = df_data[['Value_Next_to_HEADER1', 'SKU'] + [col for col in df_data.columns if col not in ['SKU', 'Value_Next_to_HEADER1']]]
-
-        # Genera un DataFrame con l'intestazione corretta
-        headers = ["Rif. Sped.", "SKU", "Collo", "Codice", "Colore", "Size", "UPC", "Made in", "Unità", "Confezione", "customer PO", "Riferimento Spedizione"]
-        df_data.columns = headers[:len(df_data.columns)]
-
-        return df_data
-
-    except Exception as e:
-        st.error(f"Si è verificato un errore: {e}")
-        return None
-
-def process_file(uploaded_file, expected_fields=9):
-    try:
-        # Elabora il file
-        df = trasponi_valore_accanto_header1(uploaded_file.getvalue(), expected_fields)
-        return df
-    except Exception as e:
-        st.error(f"Errore nell'elaborazione del file: {e}")
-        return None
-
-st.title('Caricamento File')
-uploaded_file = st.file_uploader("Carica un file CSV", type="csv")
-if uploaded_file is not None:
-    df = process_file(uploaded_file)
-    if df is not None:
-        st.success("Elaborazione completata.")
+    if file is not None:
+        # Mostra i dati del CSV
+        df = pd.read_csv(file)
         st.write(df)
 
-        # Caricamento su Google Sheets
-        if st.button("Carica su Google Sheets"):
-            spreadsheet_id = 'YOUR_SPREADSHEET_ID'
-            range_name = 'Sheet1!A1'  # Sostituire con il proprio intervallo
-            upload_to_gsheet(df, spreadsheet_id, range_name)
+        # Carica su Google Sheets
+        if st.button('Carica su Google Sheets'):
+            upload_to_google_sheets(file, "https://docs.google.com/spreadsheets/d/1xiBRf0dPlnhmpYKJrOAtdSLX5oBKfI0s6pvY3S1MVDw/edit#gid=0")
+
+if __name__ == "__main__":
+    main()
