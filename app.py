@@ -59,7 +59,7 @@ def transpose_value_next_to_header1(file_path, expected_fields):
 def upload_to_google_sheets(df, sheet_name):
     try:
         creds_info = {
-            "type": "service_account",
+            "type": st.secrets["type"],
             "project_id": st.secrets["project_id"],
             "private_key_id": st.secrets["private_key_id"],
             "private_key": st.secrets["private_key"],
