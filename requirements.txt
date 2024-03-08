@@ -3,3 +3,4 @@ numpy
 pandas
 openpyxl
 oauth2client
+streamlit-gsheets
