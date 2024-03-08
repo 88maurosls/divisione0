@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from google.oauth2.service_account import Credentials
+from google.oauth2 import service_account
 import re
 import os
 import tempfile
@@ -10,7 +10,24 @@ import tempfile
 UPLOAD_FOLDER = tempfile.gettempdir()
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 
-# Funzioni di elaborazione del CSV dallo script Flask
+# Credenziali del tuo account di servizio
+CREDENTIALS = {
+    "type": "service_account",
+    "project_id": "streamlitdivisioni",
+    "private_key_id": "a82c6b4d8ffc775bf25e826bd328f318e67ab155",
+    "private_key": "-----BEGIN PRIVATE KEY-----\n[PRIVATE_KEY]\n-----END PRIVATE KEY-----\n",
+    "client_email": "divisione@streamlitdivisioni.iam.gserviceaccount.com",
+    "client_id": "116678136247034327255",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/divisione%40streamlitdivisioni.iam.gserviceaccount.com"
+}
+
+# Creazione delle credenziali
+creds = service_account.Credentials.from_service_account_info(CREDENTIALS, scopes=SCOPES)
+
+# Funzioni di elaborazione del CSV
 def correct_csv(file_path, expected_fields):
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
@@ -61,8 +78,8 @@ def trasponi_valore_accanto_header1(file_path, expected_fields):
 def upload_to_google_sheets(file_path, sheet_name):
     try:
         df = pd.read_csv(file_path)
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = Credentials.from_service_account_file('path/to/your/credentials.json', scopes=scope)
+
+        # Autorizzazione con credenziali
         client = gspread.authorize(creds)
 
         sheet = client.open_by_url(sheet_name).sheet1
