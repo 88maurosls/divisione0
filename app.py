@@ -4,7 +4,9 @@ import gspread
 import re
 import os
 import tempfile
+import json
 from google.oauth2 import service_account
+from streamlit_gsheets import GSheetsConnection
 
 # Funzione per correggere le righe del file CSV se contengono più campi del previsto
 def correct_csv(file_path, expected_fields):
@@ -24,7 +26,7 @@ def correct_csv(file_path, expected_fields):
         file.writelines(corrected_lines)
 
 # Funzione per trasporre un valore specifico accanto a HEADER1 in tutte le righe
-def transpose_value_next_to_header1(file_path, expected_fields):
+def trasponi_valore_accanto_header1(file_path, expected_fields):
     try:
         correct_csv(file_path, expected_fields)
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -58,30 +60,12 @@ def transpose_value_next_to_header1(file_path, expected_fields):
 # Funzione per caricare i dati da un file CSV a Google Sheets
 def upload_to_google_sheets(df, sheet_name):
     try:
-        creds_info = {
-            "type": st.secrets["type"],
-            "project_id": st.secrets["project_id"],
-            "private_key_id": st.secrets["private_key_id"],
-            "private_key": st.secrets["private_key"],
-            "client_email": st.secrets["client_email"],
-            "client_id": st.secrets.get("client_id"),
-            "auth_uri": st.secrets.get("auth_uri"),
-            "token_uri": st.secrets.get("token_uri"),
-            "auth_provider_x509_cert_url": st.secrets.get("auth_provider_x509_cert_url"),
-            "client_x509_cert_url": st.secrets.get("client_x509_cert_url")
-        }
-        creds = service_account.Credentials.from_service_account_info(creds_info)
+        # Creazione dell'oggetto di connessione Google Sheets
+        conn = st.connection("gsheets", type=GSheetsConnection)
 
-        # Autorizza l'accesso a Google Sheets
-        gc = gspread.authorize(creds)
+        # Caricamento dei dati su Google Sheets
+        conn.write(df, sheet_name)
 
-        # Apertura del foglio di lavoro Google Sheets
-        sheet = client.open(sheet_name).sheet1
-        sheet.clear()
-
-        # Trasforma il DataFrame in una lista di liste per l'aggiornamento di Google Sheets
-        values = [df.columns.values.tolist()] + df.values.tolist()
-        sheet.update(values)
         st.success('File caricato con successo su Google Sheets!')
     except Exception as e:
         st.error(f"Errore durante il caricamento su Google Sheets: {e}")
@@ -99,7 +83,7 @@ def main():
             f.write(file.getbuffer())
         
         # Processa il file CSV
-        processed_file_path = transpose_value_next_to_header1(file_path, 9)
+        processed_file_path = trasponi_valore_accanto_header1(file_path, 9)
 
         if processed_file_path:
             try:
