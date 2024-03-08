@@ -31,8 +31,12 @@ def main():
 
     if file is not None:
         # Mostra i dati del CSV
-        df = pd.read_csv(file)
-        st.write(df)
+        try:
+            df = pd.read_csv(file, delimiter=',')
+            st.write(df)
+        except Exception as e:
+            st.error(f"Errore durante la lettura del file CSV: {e}")
+            return
 
         # Carica su Google Sheets
         if st.button('Carica su Google Sheets'):
