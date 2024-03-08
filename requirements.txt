@@ -2,5 +2,4 @@ streamlit==1.18
 numpy
 pandas
 openpyxl
-oauth2client
-streamlit-gsheets
+streamlit-gsheets==0.1.0
