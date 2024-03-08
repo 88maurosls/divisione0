@@ -7,7 +7,7 @@ from openpyxl.styles import Font
 from datetime import datetime
 import streamlit as st
 
-# Definisci il percorso assoluto della cartella di upload
+# Definisci il percorso della cartella di upload
 UPLOAD_FOLDER = "uploads"
 
 def correct_csv(file_path, expected_fields):
@@ -104,8 +104,6 @@ def index():
                 file_details = {"FileName": uploaded_file.name, "FileType": uploaded_file.type}
                 st.write(file_details)
                 file_path = os.path.join(UPLOAD_FOLDER, uploaded_file.name)
-                with open(file_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
 
                 # Elabora ogni file
                 output_file_path = process_file(file_path)
@@ -136,4 +134,3 @@ def index():
 # Avvia l'app Streamlit
 if __name__ == "__main__":
     index()
-
