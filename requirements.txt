@@ -2,4 +2,4 @@ streamlit==1.18
 numpy
 pandas
 openpyxl
-gsread
+gspread
