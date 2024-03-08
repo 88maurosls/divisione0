@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 # Funzione per caricare i dati da CSV a Google Sheets
 def upload_to_google_sheets(file_path, sheet_name):
@@ -10,18 +10,8 @@ def upload_to_google_sheets(file_path, sheet_name):
 
     # Carica le credenziali di accesso all'API di Google Sheets
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = {
-        "installed": {
-            "client_id": "566018196019-ororo6jebbvpuq73vp4d6b8b8mn0fuqj.apps.googleusercontent.com",
-            "project_id": "streamlitdivisioni",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_secret": "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",
-            "redirect_uris": ["http://localhost"]
-        }
-    }
-    client = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_dict(creds, scope))
+    creds = Credentials.from_service_account_file('path/to/your/credentials.json', scopes=scope)
+    client = gspread.authorize(creds)
 
     # Apri il foglio di lavoro
     sheet = client.open_by_url(sheet_name).sheet1
