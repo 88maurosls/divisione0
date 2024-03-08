@@ -63,9 +63,11 @@ def upload_to_google_sheets(file_path, sheet_name):
     try:
         df = pd.read_csv(file_path)
         # Leggi la chiave privata da una variabile d'ambiente
-        creds_json = json.loads(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
-        creds = Credentials.from_service_account_info(creds_json, scopes=SCOPES)
-        client = gspread.authorize(creds)
+        creds = Credentials.from_service_account_info(
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'], 
+    scopes=['https://www.googleapis.com/auth/spreadsheets']
+)
+gc = gspread.authorize(creds)
 
         sheet = client.open_by_url(sheet_name).sheet1
         sheet.clear()
