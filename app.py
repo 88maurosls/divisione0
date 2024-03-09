@@ -99,7 +99,7 @@ def main():
         }
     </style>""", unsafe_allow_html=True)
 
-    st.image('gsheet.png')
+    
 
     ####################################
     # parameters
