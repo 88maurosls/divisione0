@@ -110,10 +110,15 @@ def main():
     files = os.path.join("downloads/", "*.xlsx")
     files = glob.glob(files)
     dfs = [pd.read_excel(file) for file in files]
-    df = pd.concat(dfs, ignore_index=True)
-    df.to_excel("partial_tot.xlsx", index=False)
 
-    st.dataframe(df)
+    # Verifica se la lista dfs contiene almeno un dataframe non vuoto
+    if all(df.empty for df in dfs):
+        st.warning("Nessun dato da visualizzare")
+    else:
+        # Concatena i dataframe solo se almeno uno di essi non è vuoto
+        df = pd.concat(dfs, ignore_index=True)
+        df.to_excel("partial_tot.xlsx", index=False)
+        st.dataframe(df)
 
     if st.button('Publish G-sheet'):
         ######## append  to google sheet ######################
