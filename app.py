@@ -8,7 +8,6 @@ import os
 import gspread as gs
 import glob
 
-
 def correct_csv(file_path, expected_fields):
     with open(file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
@@ -86,7 +85,6 @@ def trasponi_valore_accanto_header1(file_path, expected_fields,UPLOAD_FOLDER):
 def main():
 
     st.title('App x Google Sheet')
-
     m = st.markdown("""
     <style>
     div.stButton > button:first-child {
@@ -100,42 +98,56 @@ def main():
     </style>""", unsafe_allow_html=True)
 
     st.image('gsheet.png')
+    df = pd.DataFrame() #initialize
 
-    ####################################
-    # parameters
-    path = "uploads/Nike CSV-18e1a8c7be0.CSV"
-    UPLOAD_FOLDER = "downloads"
-    trasponi_valore_accanto_header1(path,9,UPLOAD_FOLDER)
 
-    #####################################
-    ##merging all Excel inside upload folders
-    files = os.path.join("downloads/", "*.xlsx")
-    files = glob.glob(files)
-    #dfs = [pd.read_excel(file, dtype=column_data_types) for file in files]
-    dfs = [pd.read_excel(file, ) for file in files]
-    df = pd.concat(dfs, ignore_index=True)
-    df.to_excel("partial_tot.xlsx",index=False)
+    if "button1" not in st.session_state:
+        st.session_state["button1"] = False
 
-    st.dataframe(df)
+    if "button2" not in st.session_state:
+        st.session_state["button2"] = False
 
-    if st.button('Publish G-sheet'):
-        ######## append  to google sheet ######################
-        #id=https://docs.google.com/spreadsheets/d/18mSCmOwv5k8on2M96v_TyTKiJVo5xbM-wwZyxIHLgRQ/edit#gid=0
-        #condivedere il google sheet con la mail:"test-769@mygpt-416217.iam.gserviceaccount.com" ## quella del json per intenderci
-        df = df.fillna('')
-        gsheetId = '18mSCmOwv5k8on2M96v_TyTKiJVo5xbM-wwZyxIHLgRQ'
-        gc = gs.service_account(filename="credential_gsheet.json")
-        sh = gc.open_by_key(gsheetId)
-        worksheet = sh.get_worksheet(0)#index sheet inside file
-        #data_list = df.values.tolist() 
-        #worksheet.append_rows(data_list)
+    if st.button('Merge Excel'):
+        st.session_state["button1"] = not st.session_state["button1"]
+        ####################################
+        # parameters
+        path = "uploads/Nike CSV-18e1a8c7be0.CSV"
+        UPLOAD_FOLDER = "downloads"
+        trasponi_valore_accanto_header1(path,9,UPLOAD_FOLDER)
 
-        worksheet.clear() #clear sheet
-        #replace all values
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
-        st.write('Caricato su GoogleSheet!')
-        st.balloons()
-        st.write(f"check GoogleSheet at this [link](https://docs.google.com/spreadsheets/d/{gsheetId}/edit#gid=0)")
+        #####################################
+        ##merging all Excel inside upload folders
+        files = os.path.join("downloads/", "*.xlsx")
+        files = glob.glob(files)
+        #dfs = [pd.read_excel(file, dtype=column_data_types) for file in files]
+        dfs = [pd.read_excel(file, ) for file in files]
+        df = pd.concat(dfs, ignore_index=True)
+        df.to_excel("partial_tot.xlsx",index=False)
+        st.dataframe(df)
+    
+    if st.session_state["button1"]:
+        if st.button('Publish G-sheet'):
+            st.session_state["button2"] = not st.session_state["button2"]
+            ######## append  to google sheet ######################
+            #id=https://docs.google.com/spreadsheets/d/18mSCmOwv5k8on2M96v_TyTKiJVo5xbM-wwZyxIHLgRQ/edit#gid=0
+            #condivedere il google sheet con la mail:"test-769@mygpt-416217.iam.gserviceaccount.com" ## quella del json per intenderci
+            df = df.fillna('')
+            gsheetId = '18mSCmOwv5k8on2M96v_TyTKiJVo5xbM-wwZyxIHLgRQ'
+            gc = gs.service_account(filename="credential_gsheet.json")
+            sh = gc.open_by_key(gsheetId)
+            worksheet = sh.get_worksheet(0)#index sheet inside file
+            #data_list = df.values.tolist() 
+            #worksheet.append_rows(data_list)
+
+            worksheet.clear() #clear sheet
+            #replace all values
+            worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+            st.success('Caricato su GoogleSheet!')
+            st.balloons()
+            st.write(f"check GoogleSheet at this [link](https://docs.google.com/spreadsheets/d/{gsheetId}/edit#gid=0)")
+
+
+
 
 ###### transformation #####################################
 
